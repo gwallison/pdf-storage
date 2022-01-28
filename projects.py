@@ -8,11 +8,13 @@ import pandas as pd
 import os
 
 from filename_info_extractor import Filename_info_extractor as fnie
+from metadata_extractor import Metadata_extractor as mde
 from PDF_storage_handler import Storage_handler
 
 trans_dir = 'c:/MyDocs/OpenFF/data/transformed/'
 
 def get_filename_info():
+    # use the filename of each pdf to extract APINumber and creation date
     sh = Storage_handler()
     extr = fnie()
     out = []
@@ -33,5 +35,11 @@ def get_filename_info():
     tst.to_csv(os.path.join(trans_dir,'PDF_fn_info.csv'),quotechar='$',
                encoding='utf-8',index=False)
 
+
+def get_metadata():
+    sh = Storage_handler()
+    extr = mde()
+    return extr.get_meta_from_old_type()
+    
 if __name__ == '__main__':
-    df = get_filename_info()    
+    df = get_metadata()    
