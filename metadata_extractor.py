@@ -5,14 +5,27 @@ Created on Sun Jan 23 17:30:34 2022
 @author: Gary
 """
 import camelot
+from PyPDF2 import PdfFileReader    
 import pandas as pd
   
 
 class Metadata_extractor():
     def __init__(self):
         self.workfn = './tmp/workfile.pdf'
-        pass
-        
+        self.workfnold = './tmp/workfile_old.pdf'
+        self.file_meta_vars = ['Title','Author','Creator',
+                               'Producer','CreationDate']
+        self.init_file_meta_dic()
+
+    def init_file_meta_dic(self):
+        d = {}
+        for v in self.file_meta_vars:
+            d[v] = []
+        others = ['OtherFields','fn','store_dir']
+        for v in others:
+            d[v] = []
+        self.file_meta_dic = d
+
     def get_date(self):    
         tables = camelot.read_pdf(self.workfn)
         t = tables[0].df.reset_index(drop=True)
@@ -31,11 +44,36 @@ class Metadata_extractor():
     #print(get_date())
     
     def show_meta(self):
-        tables = camelot.read_pdf(self.workfn)
+        tables = camelot.read_pdf(self.workfnold)
         t = tables[0].df
         print(t)
         return t[0][0]
     
+    def get_tables_from_any_type(self,fn=''):
+        if fn == '':
+            fn = self.workfn
+        try:
+            t = camelot.read_pdf(fn,pages='1-end')
+            lst = []
+            for table in t:
+                lst.append(table.df)
+            return pd.concat(lst)
+        except:
+            return pd.DataFrame({'error':['data scraping not successful',
+                                          'likely no tables back from Camelot']})
+
+    def test_read(self,fn=''):
+        if fn == '':
+            fn = self.workfn
+        t = camelot.read_pdf(fn,pages='1-end',process_background=False)
+        print(t)
+        lst = []
+        for table in t:
+            print(f'Table:\n {table.df}\n')
+            lst.append(table.df)
+        return pd.concat(lst)
+
+
     def get_meta_from_old_type(self):
         tables = camelot.read_pdf(self.workfn)
         t = tables[0].df
@@ -52,9 +90,46 @@ class Metadata_extractor():
             out = pd.DataFrame({'values':values})
             out = out.T
             out.columns = names
-    #         print(out)
+            #print(out)
             return out
         else:
             print('other type')
+            return pd.DataFrame()
+            
+    def get_meta_from_new_type(self):
+        tables = camelot.read_pdf(self.workfn)
+        out = tables[0].df
+        out.columns = ['name','values']
+        #index = out.name.tolist()
+        out = out.set_index('name').T
+        #print(out)
+        return out
+    
+
+    def get_file_meta(self,fn,store_dir):
+        pdf_toread = PdfFileReader(open(self.workfnold, 'rb'))
+        pdf_info = pdf_toread.getDocumentInfo()
+        self.file_meta_dic['fn'].append(fn)
+        self.file_meta_dic['store_dir'].append(store_dir)
+        for v in self.file_meta_vars:
+            try:
+                x = pdf_info['/'+v]
+            except:                
+                x = ''
+            self.file_meta_dic[v].append(x)
+        others = ''
+        for v in pdf_info.keys():
+            if not v[1:] in self.file_meta_vars:
+                others += v+'; '
+        self.file_meta_dic['OtherFields'].append(others)
+
         
-        
+if __name__ == '__main__':
+    me = Metadata_extractor()
+    t = me.test_read(fn=r"C:\MyDocs\OpenFF\src\pdf-storage\tmp\workfile2.pdf")
+
+    #me.get_file_meta('tfn','tdir')
+    #t = me.file_meta_dic
+    #print(t)
+    # t = pd.concat(test,sort=True)
+    # t.to_csv('./tmp/temp.csv',quotechar='$',encoding='utf-8')

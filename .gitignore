@@ -9,3 +9,5 @@ spike*.*
 *.html
 *.pkl
 archive/
+crawler_old/
+*.csv
